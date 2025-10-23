@@ -1,0 +1,25 @@
+# Ambiente Virtual
+# Ignora o diretório venv, conforme solicitado
+venv/
+*.venv/
+.venv/
+
+# Caches e artefatos do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Banco de dados OUI (deve ser baixado pelo usuário)
+*.json
+*.db
+
+# Metadados de IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Arquivos de dependência do Windows
+/Npcap*
