@@ -1,0 +1,3 @@
+[console_scripts]
+ouilookup=ouilookup.cli:cli
+

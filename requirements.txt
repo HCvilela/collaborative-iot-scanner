@@ -1,0 +1,8 @@
+# Núcleo de Rede 
+scapy
+wmi
+# Identificação de Fabricante (OUI) 
+ouilookup
+
+# UI (será usada na Fase 2, mas instalada agora) [cite: 1, 3]
+customtkinter
