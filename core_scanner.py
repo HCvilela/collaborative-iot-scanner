@@ -3,61 +3,47 @@ from scapy.all import conf, srp, Ether, ARP, sniff
 from scapy.layers.dhcp import DHCP, BOOTP
 import ipaddress
 import wmi
+import threading
 
-# --- CORREÇÃO: Corrigir a importação do módulo ---
-# A importação anterior 'from OuiLookup import ...' falhou.
-# O nome do *módulo* (pacote) é 'ouilookup' (minúsculo).
-# O nome da *classe* dentro dele é 'OuiLookup' (maiúsculo).
+# --- Instanciação da Classe OUI ---
 try:
-    from ouilookup import OuiLookup  # <-- CORREÇÃO AQUI
-    
-    # Instancia a classe uma vez. Isso carrega o banco de dados.
+    from ouilookup import OuiLookup
     OUI_LOOKUP_INSTANCE = OuiLookup()
 except ImportError:
     print("Erro: A biblioteca 'ouilookup' não foi encontrada. "
           "Certifique-se de que 'ouilookup' está instalado.", file=sys.stderr)
     OUI_LOOKUP_INSTANCE = None
 except Exception as e:
-    # Se o 'ouilookup --update' não foi executado, o arquivo .json
-    # pode não existir, causando uma falha aqui.
     print(f"Erro ao carregar o banco de dados OUI: {e}", file=sys.stderr)
     print("Por favor, execute 'ouilookup --update' no terminal.", file=sys.stderr)
     OUI_LOOKUP_INSTANCE = None
-# --- FIM DA CORREÇÃO ---
+# --- Fim da Instanciação ---
 
 
-# Decisão de Arquitetura (Refatorada #5):
-# (Lógica WMI - Sem alteração)
 def find_active_interface():
     """
     Identifica a interface de rede ativa, seu IP e sua sub-rede (CIDR)
     usando WMI.
-    Retorna (iface_guid, ip_address, subnet_cidr) ou (None, None, None).
     """
     try:
         c = wmi.WMI()
         
-        # 1. Encontrar a rota padrão (0.0.0.0)
         route_table = c.Win32_IP4RouteTable(Destination='0.0.0.0', Mask='0.0.0.0')
-        
         if not route_table:
             raise StopIteration("Nenhuma rota padrão (0.0.0.0) encontrada no WMI.")
         
         default_route = route_table[0]
         iface_index = default_route.InterfaceIndex
         
-        # 2. Encontrar o adaptador de rede com base no InterfaceIndex
         adapter_config = c.Win32_NetworkAdapterConfiguration(
             InterfaceIndex=iface_index, 
             IPEnabled=True
         )
-        
         if not adapter_config:
             raise StopIteration(f"Nenhuma configuração de adaptador encontrada para o Índice {iface_index}.")
             
         adapter = adapter_config[0]
         
-        # 3. Extrair os detalhes da interface
         iface_ip = adapter.IPAddress[0]
         netmask = adapter.IPSubnet[0]
         
@@ -73,7 +59,6 @@ def find_active_interface():
 
         iface_name_for_sniff = scapy_iface.name 
 
-        # 4. Calcular o CIDR da sub-rede
         try:
             ip_iface = ipaddress.ip_interface(f"{iface_ip}/{netmask}")
             subnet_cidr = str(ip_iface.network)
@@ -92,7 +77,6 @@ def find_active_interface():
 def active_arp_scan(subnet_cidr: str):
     """
     Executa uma varredura ARP na sub-rede fornecida.
-    (Sem alteração)
     """
     print(f"Iniciando varredura ARP em {subnet_cidr}...")
     try:
@@ -113,11 +97,10 @@ def active_arp_scan(subnet_cidr: str):
         return devices
 
     except Exception as e:
-        print(f"Erro ao iniciar o varredura ARP: {e}", file=sys.stderr)
+        print(f"Erro durante a varredura ARP: {e}", file=sys.stderr)
         print("Certifique-se de executar como Administrador e que o Npcap está instalado.", file=sys.stderr)
         return []
 
-# --- CORREÇÃO: Usar a API documentada ---
 def get_mac_vendor(mac_address: str):
     """
     Consulta o fabricante (OUI) de um endereço MAC.
@@ -128,30 +111,24 @@ def get_mac_vendor(mac_address: str):
         return "N/A"
         
     try:
-        # A documentação mostra o uso de 'query(mac)'
-        # em uma instância da classe.
         result_list = OUI_LOOKUP_INSTANCE.query(mac_address)
         
-        # A saída documentada é uma lista de dicionários:
-        # [{'0000AA000000': 'XEROX CORPORATION'}]
         if result_list:
-            # Pega o primeiro (e único) dicionário da lista
             vendor_dict = result_list[0]
-            # Pega o primeiro (e único) valor (o nome do fabricante)
             return list(vendor_dict.values())[0]
         else:
             return "Desconhecido"
             
     except Exception as e:
-        # Captura qualquer outro erro inesperado
         print(f"\n[DEBUG] Erro inesperado ao consultar OUI para {mac_address}: {e}\n", file=sys.stderr)
         return "Erro OUI"
-# --- FIM DA CORREÇÃO ---
-
 
 # --- Módulo de Análise Passiva ---
-# (Sem alteração)
+
 def _dhcp_packet_callback(packet, user_callback):
+    """
+    Função de callback interna para processar pacotes DHCP.
+    """
     if packet.haslayer(DHCP):
         try:
             if packet[DHCP].options[0][1] == 3: # 'message-type' == 3 (Request)
@@ -167,13 +144,21 @@ def _dhcp_packet_callback(packet, user_callback):
                     user_callback({'mac': mac_address, 'hostname': hostname})
 
         except IndexError:
-            pass 
+            pass # Pacote malformado
         except Exception as e:
             print(f"Erro no callback DHCP: {e}", file=sys.stderr)
 
-def start_passive_monitor(iface_name: str, on_device_found_callback, test_duration_sec=None):
-    if test_duration_sec:
-        print(f"\nIniciando monitoramento passivo (DHCP) em '{iface_name}' por {test_duration_sec} segundos...")
+# --- REVERTIDO E MODIFICADO ---
+# Revertido ao estado anterior (sem 'stop_event', sem loop)
+# 'test_duration_sec' foi renomeado para 'timeout'
+def start_passive_monitor(iface_name: str, on_device_found_callback, timeout: int = None):
+    """
+    Inicia o sniffing passivo de DHCP na interface especificada.
+    Esta função é bloqueante e será executada em uma thread.
+    Ela irá parar automaticamente após o 'timeout'.
+    """
+    if timeout:
+        print(f"\nIniciando monitoramento passivo (DHCP) em '{iface_name}' por {timeout} segundos...")
     else:
         print(f"\nIniciando monitoramento passivo (DHCP) em '{iface_name}'.")
 
@@ -183,8 +168,9 @@ def start_passive_monitor(iface_name: str, on_device_found_callback, test_durati
             filter="udp and (port 67 or 68)",
             prn=lambda pkt: _dhcp_packet_callback(pkt, on_device_found_callback),
             store=0,
-            timeout=test_duration_sec
+            timeout=timeout # O sniff irá parar sozinho após este tempo
         )
+        print("Monitoramento passivo concluído.")
     except Exception as e:
         print(f"Erro ao iniciar o sniffing: {e}", file=sys.stderr)
         print("Certifique-se de executar como Administrador.", file=sys.stderr)
