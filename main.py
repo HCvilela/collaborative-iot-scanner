@@ -9,11 +9,12 @@ import pythoncom
 import ctypes
 import sys
 
-# --- NOVAS IMPORTAÇÕES ---
-# Importa os módulos que criamos nas Fases 1 e 2
+# --- IMPORTAÇÕES MODULARIZADAS ---
 from ui_components import ReportDeviceWindow
 from persistence_manager import save_device_registration
-# --- FIM DAS NOVAS IMPORTAÇÕES ---
+from active_scanner import ActiveScanner
+from passive_scanner import PassiveScanner
+# --- FIM DAS IMPORTAÇÕES ---
 
 # Define a aparência padrão
 ctk.set_appearance_mode("System")
@@ -25,60 +26,52 @@ class App(ctk.CTk):
 
         # --- Configuração da Janela Principal ---
         self.title("Scanner de Rede")
-        self.geometry("1050x600") # Largura aumentada para acomodar a sidebar
+        self.geometry("1050x600") 
         self.minsize(800, 400)
 
-        # --- Variáveis de Estado ---
-        self.scan_queue = queue.Queue()
-        self.passive_queue = queue.Queue()
+        # --- Variáveis de Estado (UI) ---
         self.init_queue = queue.Queue()
-        
-        self.passive_thread = None
-        self.passive_stop_event = None
-        
         self.active_interface_name = None
         self.active_subnet = None
-        
-        # Novo estado para o dispositivo selecionado
         self.selected_device_data = None
+        
+        # --- REFATORAÇÃO: Instancia os Módulos de Scan ---
+        # As classes de scanner agora gerenciam suas próprias threads e estado
+        self.active_scanner = ActiveScanner()
+        self.passive_scanner = PassiveScanner()
 
-        # --- REFATORAÇÃO DO LAYOUT (Grid) ---
-        # A janela agora tem 2 colunas:
-        # Coluna 0: A área principal com as tabs (expansível)
-        # Coluna 1: A nova sidebar (fixa)
+        # A UI (main) apenas obtém as filas para processar os resultados
+        self.scan_queue = self.active_scanner.get_queue()
+        self.passive_queue = self.passive_scanner.get_queue()
+        # --- FIM DA REFATORAÇÃO ---
+
+        # --- Layout (Grid) ---
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=0) # Não expande
+        self.grid_columnconfigure(1, weight=0) 
         self.grid_rowconfigure(0, weight=1)
 
-        # --- Layout Principal (Tabs) ---
         self.tab_view = ctk.CTkTabview(self, anchor="w")
-        # .grid() é usado no lugar de .pack()
         self.tab_view.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         self.tab_active = self.tab_view.add("Varredura Ativa")
         self.tab_passive = self.tab_view.add("Monitor Passivo")
 
-        # --- Nova Sidebar ---
         self.sidebar_frame = ctk.CTkFrame(self, width=250)
         self.sidebar_frame.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="nsw")
-        # --- FIM DA REFATORAÇÃO DO LAYOUT ---
 
         # --- Configuração dos Componentes ---
         self.setup_active_scan_tab()
         self.setup_passive_scan_tab()
-        self.setup_sidebar() # Configura a nova sidebar
+        self.setup_sidebar() 
         
-        # Inicia a descoberta de interface (sem alteração)
         self.initial_interface_find()
 
     def setup_sidebar(self):
         """Cria e popula os widgets da nova barra lateral."""
         
-        # Configura o grid da sidebar (1 coluna)
-        self.sidebar_frame.grid_rowconfigure(6, weight=1) # Espaço
+        self.sidebar_frame.grid_rowconfigure(6, weight=1) 
         self.sidebar_frame.grid_columnconfigure(0, weight=1)
         
-        # Título
         self.sidebar_title = ctk.CTkLabel(
             self.sidebar_frame, 
             text="Dispositivo Selecionado", 
@@ -86,7 +79,6 @@ class App(ctk.CTk):
         )
         self.sidebar_title.grid(row=0, column=0, padx=10, pady=10, sticky="w")
         
-        # Labels de Informação
         self.sidebar_ip_label = ctk.CTkLabel(self.sidebar_frame, text="IP: N/A", anchor="w")
         self.sidebar_ip_label.grid(row=1, column=0, padx=10, pady=2, sticky="w")
         
@@ -99,12 +91,11 @@ class App(ctk.CTk):
         self.sidebar_hostname_label = ctk.CTkLabel(self.sidebar_frame, text="Hostname: N/A", anchor="w")
         self.sidebar_hostname_label.grid(row=4, column=0, padx=10, pady=2, sticky="w")
         
-        # Botão de Relatar
         self.report_button = ctk.CTkButton(
             self.sidebar_frame, 
             text="Relatar Dispositivo", 
             command=self.open_report_window, 
-            state="disabled" # Começa desabilitado
+            state="disabled"
         )
         self.report_button.grid(row=5, column=0, padx=10, pady=15, sticky="ew")
 
@@ -125,7 +116,6 @@ class App(ctk.CTk):
         self.scan_status_label = ctk.CTkLabel(top_frame, text="Detectando interface...", text_color="gray")
         self.scan_status_label.pack(side="left", padx=15)
 
-        # Tabela (Treeview)
         columns = ('ip', 'mac', 'vendor', 'hostname')
         self.results_tree = ttk.Treeview(
             self.tab_active,
@@ -142,9 +132,7 @@ class App(ctk.CTk):
         self.results_tree.column('hostname', width=150, anchor='w')
         self.results_tree.pack(side="bottom", fill="both", expand=True, padx=10, pady=10)
         
-        # --- VINCULA O EVENTO DE CLIQUE ---
         self.results_tree.bind("<<TreeviewSelect>>", self.on_device_select)
-        # --- FIM DA VINCULAÇÃO ---
 
     def setup_passive_scan_tab(self):
         """Cria os widgets para a aba de monitoramento passivo."""
@@ -179,7 +167,6 @@ class App(ctk.CTk):
         )
         self.passive_status_label.pack(side="left", padx=15)
 
-        # Tabela (Treeview)
         columns = ('mac', 'vendor', 'hostname')
         self.passive_tree = ttk.Treeview(
             self.tab_passive,
@@ -194,40 +181,30 @@ class App(ctk.CTk):
         self.passive_tree.column('hostname', width=150, anchor='w')
         self.passive_tree.pack(side="bottom", fill="both", expand=True, padx=10, pady=10)
         
-        # --- VINCULA O EVENTO DE CLIQUE ---
         self.passive_tree.bind("<<TreeviewSelect>>", self.on_device_select)
-        # --- FIM DA VINCULAÇÃO ---
 
-    # --- NOVAS FUNÇÕES DE EVENTO ---
+    # --- Funções de Evento (Sidebar e Modal) ---
     def on_device_select(self, event):
-        """
-        Chamado quando o usuário clica em um item em QUALQUER Treeview.
-        Atualiza a sidebar com os dados do item selecionado.
-        """
-        widget = event.widget # Identifica qual Treeview foi clicado
+        """Atualiza a sidebar quando um dispositivo é clicado."""
+        widget = event.widget 
         
-        # Pega o ID da linha selecionada (ex: 'I001')
         selected_item_id = widget.selection()
         if not selected_item_id:
-            return # Se o clique foi para desmarcar, não faz nada
+            return 
         
-        # Pega os valores da linha
         item_data = widget.item(selected_item_id[0])['values']
         
-        # Limpa a seleção da *outra* tabela para evitar confusão
         if widget == self.results_tree:
             self.passive_tree.selection_remove(self.passive_tree.selection())
         else:
             self.results_tree.selection_remove(self.results_tree.selection())
         
-        # Extrai os dados baseado na tabela clicada
         if widget == self.results_tree: # Tabela Ativa
             ip, mac, vendor, hostname = item_data
         else: # Tabela Passiva
             mac, vendor, hostname = item_data
-            ip = "N/A (Passivo)" # Monitor passivo não captura IP
+            ip = "N/A (Passivo)"
             
-        # Armazena os dados no estado da App (formato padronizado)
         self.selected_device_data = {
             'ip': ip,
             'mac': mac,
@@ -235,74 +212,49 @@ class App(ctk.CTk):
             'hostname': hostname
         }
         
-        # Atualiza as labels da sidebar
         self.sidebar_ip_label.configure(text=f"IP: {ip}")
         self.sidebar_mac_label.configure(text=f"MAC: {mac}")
         self.sidebar_vendor_label.configure(text=f"Fabricante: {vendor}")
         self.sidebar_hostname_label.configure(text=f"Hostname: {hostname}")
         
-        # Habilita o botão de relatar
         self.report_button.configure(state="normal")
 
     def clear_selection(self):
         """Limpa a seleção da tabela e reseta a sidebar."""
-        # Remove a seleção visual
         self.results_tree.selection_remove(self.results_tree.selection())
         self.passive_tree.selection_remove(self.passive_tree.selection())
-        
-        # Limpa o estado
         self.selected_device_data = None
-        
-        # Reseta as labels da sidebar
         self.sidebar_ip_label.configure(text="IP: N/A")
         self.sidebar_mac_label.configure(text="MAC: N/A")
         self.sidebar_vendor_label.configure(text="Fabricante: N/A")
         self.sidebar_hostname_label.configure(text="Hostname: N/A")
-        
-        # Desabilita o botão
         self.report_button.configure(state="disabled")
 
     def open_report_window(self):
-        """
-        Abre a janela modal (de 'ui_components.py')
-        e passa a função de callback.
-        """
+        """Abre a janela modal de 'ui_components.py'."""
         if not self.selected_device_data:
             return
             
-        # Cria a instância da janela modal
         modal = ReportDeviceWindow(
             master=self,
             device_data=self.selected_device_data,
-            on_save_callback=self.handle_save_registration # Passa a função de callback
+            on_save_callback=self.handle_save_registration 
         )
-        modal.grab_set() # Torna a janela modal
+        modal.grab_set()
 
     def handle_save_registration(self, data_from_modal: dict):
-        """
-        Callback que é chamado pela janela modal.
-        Recebe os dados do formulário e os passa para o
-        módulo de persistência para salvar.
-        """
+        """Callback que salva os dados (de 'persistence_manager.py')."""
         try:
-            # Chama a função do 'persistence_manager.py'
             save_device_registration(data_from_modal)
-            
-            # Atualiza o status para o usuário
             status_text = f"Registro salvo para {data_from_modal.get('mac')}"
             self.scan_status_label.configure(text=status_text, text_color="green")
-            
-            # Limpa a seleção
             self.clear_selection()
-            
         except Exception as e:
-            # Mostra erro se o salvamento falhar
             self.scan_status_label.configure(text=f"Falha ao salvar: {e}", text_color="red")
             
-    # --- FIM DAS NOVAS FUNÇÕES ---
-
-    # --- Lógica de Inicialização (Sem alteração, exceto 'prime') ---
+    # --- Lógica de Inicialização da Aplicação ---
     def initial_interface_find(self):
+        """Inicia a thread para encontrar a interface de rede."""
         thread = threading.Thread(
             target=self.interface_finder_worker,
             args=(self.init_queue,),
@@ -312,6 +264,7 @@ class App(ctk.CTk):
         self.process_init_queue()
 
     def interface_finder_worker(self, queue: queue.Queue):
+        """Thread worker que chama o WMI e "prepara" (primes) a interface."""
         try:
             pythoncom.CoInitialize()
             iface, ip, subnet = core_scanner.find_active_interface()
@@ -319,13 +272,13 @@ class App(ctk.CTk):
             if not iface:
                 queue.put({'type': 'error', 'data': 'Nenhuma interface de rede ativa encontrada.'})
             else:
-                # "Acorda" o Npcap/Scapy (Workaround do bug)
                 core_scanner.prime_network_interface(iface, ip)
                 queue.put({'type': 'success', 'iface': iface, 'subnet': subnet})
         except Exception as e:
             queue.put({'type': 'error', 'data': f"Erro de WMI: {e}"})
 
     def process_init_queue(self):
+        """Processa o resultado da descoberta de interface (na thread da UI)."""
         try:
             message = self.init_queue.get_nowait()
             
@@ -348,44 +301,24 @@ class App(ctk.CTk):
         except queue.Empty:
             self.after(100, self.process_init_queue)
 
-    # --- Lógica da Varredura Ativa ---
+    # --- Lógica de Delegação (Varredura Ativa) ---
     def start_active_scan_thread(self):
-        """Inicia a varredura ativa (botão)."""
-        self.clear_selection() # Limpa a sidebar
+        """Delega a varredura ativa para o módulo ActiveScanner."""
+        self.clear_selection() 
         self.scan_button.configure(state="disabled", text="Escaneando...")
         self.scan_status_label.configure(text=f"Varrendo {self.active_subnet}...")
         
         for item in self.results_tree.get_children():
             self.results_tree.delete(item)
         
-        self.process_scan_queue() 
+        self.process_scan_queue() # Inicia o processador da fila
+        
+        # --- REFATORADO ---
+        # A lógica da thread foi movida para o 'active_scanner'
+        self.active_scanner.start_scan(self.active_subnet)
+        # --- FIM ---
 
-        thread = threading.Thread(
-            target=self.active_scan_worker,
-            args=(self.scan_queue,),
-            daemon=True
-        )
-        thread.start()
-
-    def active_scan_worker(self, queue: queue.Queue):
-        """Thread worker da varredura ativa."""
-        try:
-            devices = core_scanner.active_arp_scan(self.active_subnet)
-            if not devices:
-                queue.put({'type': 'status', 'data': 'Varredura concluída. Nenhum dispositivo encontrado.'})
-                return
-
-            queue.put({'type': 'status', 'data': f"Encontrados {len(devices)} dispositivos. Obtendo fabricantes..."})
-
-            for device in devices:
-                vendor = core_scanner.get_mac_vendor(device['mac'])
-                device_data = (device['ip'], device['mac'], vendor, "N/A (Obtido via DHCP)")
-                queue.put({'type': 'result', 'data': device_data})
-            
-        except Exception as e:
-            queue.put({'type': 'error', 'data': f"Erro: {e}"})
-        finally:
-            queue.put({'type': 'done'}) 
+    # (LÓGICA DO WORKER REMOVIDA)
 
     def process_scan_queue(self):
         """Processa a fila da varredura ativa (na thread da UI)."""
@@ -417,26 +350,18 @@ class App(ctk.CTk):
             self.after(100, self.process_scan_queue)
 
 
-    # --- Lógica do Monitor Passivo "Start/Stop" ---
+    # --- Lógica de Delegação (Monitor Passivo) ---
     def start_passive_scan(self):
-        """Inicia o monitoramento passivo (botão Iniciar)."""
-        self.clear_selection() # Limpa a sidebar
+        """Delega o início do monitor para o PassiveScanner."""
+        self.clear_selection() 
         for item in self.passive_tree.get_children():
             self.passive_tree.delete(item)
 
-        self.passive_stop_event = threading.Event()
-        self.process_passive_queue() 
-
-        self.passive_thread = threading.Thread(
-            target=self.passive_scan_worker,
-            args=(
-                self.passive_queue,
-                self.passive_stop_event,
-                self.active_interface_name
-            ),
-            daemon=True
-        )
-        self.passive_thread.start()
+        self.process_passive_queue() # Inicia o processador da fila
+        
+        # --- REFATORADO ---
+        self.passive_scanner.start_scan(self.active_interface_name)
+        # --- FIM ---
         
         self.passive_status_label.configure(
             text=f"Monitorando DHCP em '{self.active_interface_name}'...", 
@@ -446,35 +371,15 @@ class App(ctk.CTk):
         self.passive_stop_button.configure(state="normal")
 
     def stop_passive_scan(self):
-        """Para o monitoramento passivo (botão Parar)."""
+        """Delega a parada do monitor para o PassiveScanner."""
         self.passive_status_label.configure(text="Parando...", text_color="gray")
         self.passive_stop_button.configure(state="disabled")
         
-        if self.passive_stop_event:
-            self.passive_stop_event.set() # Sinaliza para a thread parar
+        # --- REFATORADO ---
+        self.passive_scanner.stop_scan()
+        # --- FIM ---
 
-    def passive_scan_worker(self, queue: queue.Queue, stop_event: threading.Event, iface_name: str):
-        """Thread worker do monitor passivo."""
-        
-        def on_device_found(device_info):
-            vendor = core_scanner.get_mac_vendor(device_info.get('mac'))
-            device_data = (
-                device_info.get('mac'),
-                vendor,
-                device_info.get('hostname')
-            )
-            queue.put(device_data)
-
-        # Loop de 'sniffing'
-        while not stop_event.is_set():
-            core_scanner.start_passive_monitor(
-                iface_name=iface_name,
-                on_device_found_callback=on_device_found,
-                stop_event=stop_event,
-                timeout_per_loop=1
-            )
-        
-        queue.put({'type': 'done'}) # Sinaliza para a UI
+    # (LÓGICA DO WORKER REMOVIDA)
 
     def process_passive_queue(self):
         """Processa a fila do monitor passivo (na thread da UI)."""
@@ -488,7 +393,6 @@ class App(ctk.CTk):
                 if isinstance(message, dict):
                     msg_type = message.get('type')
                     if msg_type == 'done':
-                        # A thread worker confirmou que parou
                         self.passive_status_label.configure(
                             text=f"Monitoramento parado. (Interface: {self.active_interface_name})",
                             text_color="gray"
@@ -502,7 +406,6 @@ class App(ctk.CTk):
                         self.passive_status_label.configure(text=message.get('data'), text_color="red")
 
                 else:
-                    # Se não for um dict, é um dispositivo
                     device_data = message
                     self.passive_tree.insert('', 0, values=device_data)
         
