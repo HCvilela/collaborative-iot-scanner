@@ -1,5 +1,4 @@
 # Ambiente Virtual
-# Ignora o diretório venv, conforme solicitado
 venv/
 *.venv/
 .venv/
@@ -23,3 +22,5 @@ __pycache__/
 
 # Arquivos de dependência do Windows
 /Npcap*
+
+Registros de dispositivos/

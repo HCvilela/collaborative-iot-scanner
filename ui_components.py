@@ -7,17 +7,7 @@ class ReportDeviceWindow(ctk.CTkToplevel):
     """
     
     def __init__(self, master, device_data: dict, on_save_callback: callable):
-        """
-        Inicializa a janela modal.
-        
-        Argumentos:
-            master (ctk.CTk): A janela principal (App) que está chamando.
-            device_data (dict): Os dados pré-coletados do dispositivo
-                                (ex: {'mac': ..., 'vendor': ..., 'hostname': ...}).
-            on_save_callback (callable): A função (do main.py) que será
-                                         chamada quando o botão "Salvar" for
-                                         pressionado.
-        """
+
         super().__init__(master)
         
         self.on_save_callback = on_save_callback

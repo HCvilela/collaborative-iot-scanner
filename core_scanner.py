@@ -17,8 +17,7 @@ except ImportError:
           "Certifique-se de que 'ouilookup' está instalado.", file=sys.stderr)
     OUI_LOOKUP_INSTANCE = None
 except Exception as e:
-    # Se o 'ouilookup --update' não foi executado, o arquivo .json
-    # pode não existir, causando uma falha aqui.
+
     print(f"Erro ao carregar o banco de dados OUI: {e}", file=sys.stderr)
     print("Por favor, execute 'ouilookup --update' no terminal.", file=sys.stderr)
     OUI_LOOKUP_INSTANCE = None
@@ -143,7 +142,7 @@ def get_mac_vendor(mac_address: str):
         print(f"\n[DEBUG] Erro inesperado ao consultar OUI para {mac_address}: {e}\n", file=sys.stderr)
         return "Erro OUI"
 
-# --- NOVA FUNÇÃO (Workaround para Npcap) ---
+
 def prime_network_interface(iface_name: str, ip_to_ping: str):
     """
     Envia um único pacote ARP (para o próprio IP da interface)
@@ -214,6 +213,5 @@ def start_passive_monitor(iface_name: str, on_device_found_callback, stop_event:
         )
     except Exception as e:
         if not stop_event.is_set():
-            # Ignora erros se estivermos parando, mas reporta se for
-            # um erro real do Scapy/Npcap
+
             print(f"Erro durante o sniffing: {e}", file=sys.stderr)

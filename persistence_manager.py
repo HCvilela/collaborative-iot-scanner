@@ -47,25 +47,3 @@ def save_device_registration(device_data: dict):
     except Exception as e:
         print(f"Erro inesperado ao salvar o registro: {e}", file=sys.stderr)
 
-# (Opcional) Função futura para a segunda parte do plano:
-# def load_registrations():
-#     """
-#     Lê o arquivo .jsonl e o carrega na memória.
-#     (Será implementado em uma fase futura do plano).
-#     """
-#     if not os.path.exists(DATA_FILE):
-#         return {} # Retorna um dicionário vazio se o arquivo não existe
-#
-#     registrations = {}
-#     try:
-#         with open(DATA_FILE, "r", encoding="utf-8") as f:
-#             for line in f:
-#                 if line.strip():
-#                     data = json.loads(line)
-#                     if 'mac' in data:
-#                         # Armazena pelo MAC para consulta rápida
-#                         registrations[data['mac']] = data
-#         return registrations
-#     except Exception as e:
-#         print(f"Erro ao carregar registros: {e}", file=sys.stderr)
-#         return {}

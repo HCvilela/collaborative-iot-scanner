@@ -35,7 +35,7 @@ class App(ctk.CTk):
         self.active_subnet = None
         self.selected_device_data = None
         
-        # --- REFATORAÇÃO: Instancia os Módulos de Scan ---
+ 
         # As classes de scanner agora gerenciam suas próprias threads e estado
         self.active_scanner = ActiveScanner()
         self.passive_scanner = PassiveScanner()
@@ -43,9 +43,9 @@ class App(ctk.CTk):
         # A UI (main) apenas obtém as filas para processar os resultados
         self.scan_queue = self.active_scanner.get_queue()
         self.passive_queue = self.passive_scanner.get_queue()
-        # --- FIM DA REFATORAÇÃO ---
+    
 
-        # --- Layout (Grid) ---
+        # --- Layout (Grid) --
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=0) 
         self.grid_rowconfigure(0, weight=1)
@@ -375,11 +375,7 @@ class App(ctk.CTk):
         self.passive_status_label.configure(text="Parando...", text_color="gray")
         self.passive_stop_button.configure(state="disabled")
         
-        # --- REFATORADO ---
         self.passive_scanner.stop_scan()
-        # --- FIM ---
-
-    # (LÓGICA DO WORKER REMOVIDA)
 
     def process_passive_queue(self):
         """Processa a fila do monitor passivo (na thread da UI)."""

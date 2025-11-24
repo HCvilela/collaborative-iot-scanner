@@ -106,5 +106,4 @@ class PassiveScanner:
             
         finally:
             # --- Sinaliza para a UI que a thread terminou ---
-            # Isso é crucial para a UI reabilitar o botão "Iniciar"
             self.passive_queue.put({'type': 'done'})

@@ -1,6 +1,6 @@
 # Scanner de Rede para Windows 11
 
-Este projeto é um scanner de rede leve para Windows 11, desenvolvido em Python, Scapy e CustomTkinter.
+Este projeto é um scanner de rede leve para Windows, desenvolvido em Python, Scapy e CustomTkinter.
 
 ## Requisitos Essenciais
 
@@ -43,6 +43,3 @@ Antes de executar, você **DEVE** atender a dois requisitos:
     ```sh
     python main.py
     ```
-
----
-*Esta aplicação foi desenvolvida seguindo o `Plano de desenvolvimento.txt`.*

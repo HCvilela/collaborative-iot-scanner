@@ -1,3 +1,5 @@
 {"mac": "94:08:53:8b:31:3f", "vendor_oui": "Liteon Technology Corporation", "hostname": "Meu notebook", "tipo_dispositivo": "Notebook", "fabricante_produto": "Acer", "modelo_dispositivo": "Aspire 5"}
 {"mac": "c0:25:2f:d9:b3:7a", "vendor_oui": "SHENZHEN MERCURY COMMUNICATION TECHNOLOGIES CO.,LTD.", "hostname": "Provavelmente roteador", "tipo_dispositivo": "teste", "fabricante_produto": "teste", "modelo_dispositivo": "teste"}
 {"mac": "aa:34:8e:1d:10:bd", "vendor_oui": "Xiaomi", "hostname": "Redmi-Note-11", "tipo_dispositivo": "Smartphone", "fabricante_produto": "Xiaomi", "modelo_dispositivo": "Note 11"}
+{"mac": "c8:63:f1:c8:4c:f9", "vendor_oui": "Sony Interactive Entertainment Inc.", "hostname": "PS4 Pro", "tipo_dispositivo": "Console de Videogame", "fabricante_produto": "Sony", "modelo_dispositivo": "PlayStation 4 Pro"}
+{"mac": "94:e2:3c:19:48:35", "vendor_oui": "Intel Corporate", "hostname": "aaaaaa", "tipo_dispositivo": "aaaa", "fabricante_produto": "aaa", "modelo_dispositivo": "aa"}

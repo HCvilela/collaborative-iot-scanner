@@ -3,12 +3,6 @@ import queue
 import core_scanner
 
 class ActiveScanner:
-    """
-    Encapsula toda a lógica de execução da Varredura Ativa.
-    
-    Esta classe gerencia sua própria fila (queue) e thread
-    para executar a varredura ARP sem bloquear a UI.
-    """
     
     def __init__(self):
         """Inicializa o scanner e sua fila de comunicação."""
@@ -32,7 +26,6 @@ class ActiveScanner:
         """
         
         # Limpa a fila de resultados anteriores
-        # (Embora a UI já faça isso, é uma boa prática)
         while not self.scan_queue.empty():
             self.scan_queue.get_nowait()
             
