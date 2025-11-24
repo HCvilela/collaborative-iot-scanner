@@ -1,45 +1,102 @@
 # Scanner de Rede para Windows 11
 
-Este projeto é um scanner de rede leve para Windows, desenvolvido em Python, Scapy e CustomTkinter.
+Este projeto é um scanner de rede leve e modular para Windows,
+desenvolvido em **Python**, utilizando **Scapy** para manipulação de
+pacotes e **CustomTkinter** para uma interface gráfica moderna.
 
-## Requisitos Essenciais
+O sistema permite identificar dispositivos conectados à rede local (IP,
+MAC, Fabricante e Hostname) através de métodos ativos (ARP) e passivos
+(DHCP Sniffing).
 
-Antes de executar, você **DEVE** atender a dois requisitos:
+## 📋 Pré-requisitos do Sistema
 
-1.  **Privilégios de Administrador:** A ferramenta usa Scapy para captura de pacotes, o que exige permissões elevadas. Você deve executar o script "Como Administrador".
-2.  **Npcap Instalado:** O Scapy depende do driver Npcap (o sucessor do WinPcap) para funcionar no Windows.
-    * **[Baixe o instalador do Npcap aqui](https://npcap.com/)** (Instale com as opções padrão).
+Antes de começar, certifique-se de que seu ambiente possui as
+ferramentas abaixo instaladas:
 
-## Como Executar
+1.  **Python (3.10 ou superior):**
+    -   Necessário para executar o código.
+    -   **Importante:** Durante a instalação, marque a opção **"Add
+        Python to PATH"**.
+    -   https://www.python.org/downloads/
+2.  **Npcap (Driver de Captura):**
+    -   O Scapy depende deste driver para funcionar no Windows (sucessor
+        do WinPcap).
+    -   Instale com as opções padrão (garanta que a opção "Install Npcap
+        in WinPcap API-compatible Mode" esteja marcada se disponível).
+    -   https://npcap.com/#download
+3.  **Git (Opcional):**
+    -   Necessário para clonar o repositório via terminal. Caso não
+        tenha, você pode baixar o projeto como `.zip`.
+    -   https://git-scm.com/downloads
+4.  **Privilégios de Administrador:**
+    -   A varredura de rede exige acesso de baixo nível à interface de
+        rede. O terminal **deve** ser executado como Administrador.
 
-1.  **Clone o Repositório:**
-    ```sh
-    git clone [URL-do-seu-repositorio]
-    cd [nome-do-repositorio]
-    ```
+------------------------------------------------------------------------
 
-2.  **Crie e Ative o Ambiente Virtual:**
-    ```sh
-    # Criar
-    python -m venv venv
-    
-    # Ativar (PowerShell)
-    .\venv\Scripts\Activate.ps1
-    ```
+## 🚀 Instalação e Execução
 
-3.  **Instale as Dependências:**
-    ```sh
-    pip install -r requirements.txt
-    ```
+Siga os passos abaixo para configurar o ambiente:
 
-4.  **Atualize o Banco de Dados de Fabricantes (OUI):**
-    (Execute este comando *uma vez* para baixar o banco de dados de MACs)
-    ```sh
-    ouilookup --update
-    ```
+### 1. Obter o Código
 
-5.  **Execute a Aplicação:**
-    **Importante:** Abra um novo terminal (PowerShell ou CMD) **Como Administrador**, ative o `venv` novamente (passo 2) e execute:
-    ```sh
-    python main.py
-    ```
+Abra seu terminal (PowerShell ou CMD) e clone o repositório (ou extraia
+o `.zip`):
+
+``` powershell
+git clone [URL-do-seu-repositorio]
+cd scanner-rede
+```
+
+### 2. Criar o Ambiente Virtual (Recomendado)
+
+``` powershell
+# Criar o ambiente virtual
+python -m venv venv
+
+# Ativar o ambiente (PowerShell)
+.
+env\Scripts\Activate.ps1
+# Se der erro de permissão:
+# Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### 3. Instalar Dependências
+
+``` powershell
+pip install -r requirements.txt
+```
+
+### 4. Configurar Banco de Dados de Fabricantes
+
+Execute **uma única vez**:
+
+``` powershell
+ouilookup --update
+```
+
+### 5. Executar a Aplicação
+
+⚠️ **Importante:** o terminal deve estar aberto como **Administrador**.
+
+1.  Abra o PowerShell/CMD como **Administrador**.
+2.  Navegue até a pasta do projeto.
+3.  Ative o ambiente virtual (`.
+env\Scripts\Activate.ps1`).
+4.  Execute o programa:
+
+``` powershell
+python main.py
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ Solução de Problemas Comuns
+
+-   **Erro "Scapy/Npcap não encontrado":** Verifique se o Npcap está
+    instalado.
+-   **Erro de Permissão/Access Denied:** Certifique-se de abrir o
+    terminal como **Administrador**.
+-   **Interface Gráfica não aparece / erro de `customtkinter`:**
+    Confirme se as dependências foram instaladas dentro do ambiente
+    virtual.
